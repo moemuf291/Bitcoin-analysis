@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Bitcoin Analysis - {{ address }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fab fa-bitcoin bitcoin-icon"></i>
+                    Bitcoin Address Analysis
+                </h1>
+                <p class="text-muted mb-0">
+                    <strong>Address:</strong> {{ address }}<br>
+                    <strong>File:</strong> {{ filename }}
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Files
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Summary -->
+{% if statistics %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i>
+                    Address Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for key, value in statistics.items() %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-value">
+                                {% if 'btc' in key|lower %}
+                                    {{ "%.8f"|format(value) }}
+                                {% elif 'balance' in key|lower %}
+                                    {{ "%.8f"|format(value) }} BTC
+                                {% else %}
+                                    {{ value|int if value is number else value }}
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">
+                                {{ key.replace('_', ' ').title() }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transaction Timeline -->
+{% if timeline_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i>
+                    Transaction Timeline
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="timeline-plot"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Balance Over Time -->
+{% if balance_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-balance-scale"></i>
+                    Cumulative Balance Over Time
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="balance-plot"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transaction Volume Distribution -->
+{% if volume_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i>
+                    Transaction Volume Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="volume-plot"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Network Graph -->
+{% if network_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-project-diagram"></i>
+                    Address Network Visualization
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Network Graph:</strong> This shows the connections between Bitcoin addresses. 
+                    Hover over nodes to see details. Zoom and pan to explore the network.
+                </div>
+                <div id="network-plot"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- No Data Message -->
+{% if not timeline_plot and not balance_plot and not volume_plot and not network_plot %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
+                <h4 class="text-muted">No Visualization Data Available</h4>
+                <p class="text-muted">
+                    The JSON file doesn't contain sufficient data for visualization.<br>
+                    Please ensure the analysis was completed successfully.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Plot configurations
+    const plotConfig = {
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+        responsive: true
+    };
+
+    // Render Timeline Plot
+    {% if timeline_plot %}
+    const timelineData = {{ timeline_plot|safe }};
+    Plotly.newPlot('timeline-plot', timelineData.data, timelineData.layout, plotConfig);
+    {% endif %}
+
+    // Render Balance Plot
+    {% if balance_plot %}
+    const balanceData = {{ balance_plot|safe }};
+    Plotly.newPlot('balance-plot', balanceData.data, balanceData.layout, plotConfig);
+    {% endif %}
+
+    // Render Volume Plot
+    {% if volume_plot %}
+    const volumeData = {{ volume_plot|safe }};
+    Plotly.newPlot('volume-plot', volumeData.data, volumeData.layout, plotConfig);
+    {% endif %}
+
+    // Render Network Plot
+    {% if network_plot %}
+    const networkData = {{ network_plot|safe }};
+    Plotly.newPlot('network-plot', networkData.data, networkData.layout, plotConfig);
+    {% endif %}
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        {% if timeline_plot %}
+        Plotly.Plots.resize('timeline-plot');
+        {% endif %}
+        {% if balance_plot %}
+        Plotly.Plots.resize('balance-plot');
+        {% endif %}
+        {% if volume_plot %}
+        Plotly.Plots.resize('volume-plot');
+        {% endif %}
+        {% if network_plot %}
+        Plotly.Plots.resize('network-plot');
+        {% endif %}
+    });
+
+    // Auto-resize plots after page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            {% if timeline_plot %}
+            Plotly.Plots.resize('timeline-plot');
+            {% endif %}
+            {% if balance_plot %}
+            Plotly.Plots.resize('balance-plot');
+            {% endif %}
+            {% if volume_plot %}
+            Plotly.Plots.resize('volume-plot');
+            {% endif %}
+            {% if network_plot %}
+            Plotly.Plots.resize('network-plot');
+            {% endif %}
+        }, 100);
+    });
+</script>
+{% endblock %}

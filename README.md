@@ -1,9 +1,10 @@
 # Bitcoin Address Analyzer
 
-A comprehensive Bitcoin address analysis tool that exports all data to structured JSON files.
+A comprehensive Bitcoin address analysis tool that exports all data to structured JSON files and provides interactive web visualizations.
 
 ## Features
 
+### Core Analysis
 - **Address Statistics**: Total received, sent, current balance, and transaction count
 - **Transaction History**: Detailed transaction data with timestamps and amounts
 - **Address Clustering**: Analysis of related addresses and connection patterns
@@ -11,31 +12,52 @@ A comprehensive Bitcoin address analysis tool that exports all data to structure
 - **Transaction Timeline**: Time-series transaction data with monthly activity summaries
 - **JSON Export**: All analysis data exported to structured JSON format
 
+### Web Visualization (NEW! 🚀)
+- **Interactive Charts**: Transaction timeline, balance over time, volume distribution
+- **Network Visualization**: Interactive graph of connected Bitcoin addresses
+- **Statistical Dashboard**: Real-time statistics and key metrics
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
+- **File Management**: Easy selection and analysis of multiple JSON files
+
 ## Requirements
 
-The following Python packages are required:
+### For Bitcoin Analysis
 - requests
 - rich
 - networkx
 
+### For Web Visualization
+- flask
+- plotly
+
 ## Installation
 
-Install the required packages using pip:
+### Install All Requirements
+
+Install all required packages using pip:
 
 ```bash
-pip install --break-system-packages requests rich networkx
+pip install --break-system-packages requests rich networkx flask plotly
 ```
 
 Or on Ubuntu/Debian systems:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-requests python3-rich python3-networkx
+sudo apt install -y python3-requests python3-rich python3-networkx python3-flask python3-plotly
+```
+
+### Install Only Analysis Requirements
+
+If you only want the command-line analysis tool:
+
+```bash
+pip install --break-system-packages requests rich networkx
 ```
 
 ## Usage
 
-### Interactive Mode
+### 1. Bitcoin Address Analysis
 
 Run the script interactively to analyze any Bitcoin address:
 
@@ -44,6 +66,32 @@ python3 bitcoin_analysis.py
 ```
 
 The program will prompt you to enter a Bitcoin address. After analysis, it will generate a JSON file containing all the analyzed data.
+
+### 2. Web Visualization 🌐
+
+After generating JSON files, launch the interactive web visualizer:
+
+```bash
+python3 run_visualizer.py
+```
+
+Or manually start the Flask app:
+
+```bash
+python3 app.py
+```
+
+Then open your browser and go to: **http://localhost:5000**
+
+#### Web Features:
+- **Dashboard**: Browse and select analysis files
+- **Interactive Charts**: 
+  - Transaction timeline with hover details
+  - Cumulative balance over time
+  - Transaction volume distribution
+  - Address network graph
+- **Statistics Panel**: Key metrics and summaries
+- **Responsive Design**: Works on all devices
 
 ### Example Analysis
 
@@ -110,12 +158,25 @@ The exported JSON file contains the following sections:
 
 The structured JSON output can be used for:
 
+- **Web Visualizations**: Use our built-in Flask web app for interactive charts
 - **Custom Visualizations**: Import into visualization libraries (D3.js, Chart.js, etc.)
 - **Data Analysis**: Process with pandas, R, or other analysis tools
 - **API Integration**: Serve data through web APIs
 - **Machine Learning**: Feature extraction for blockchain analysis models
 - **Database Storage**: Import into databases for further querying
 - **Report Generation**: Create custom reports and dashboards
+
+## Screenshots
+
+### Web Dashboard
+The interactive web interface provides an intuitive way to browse and visualize Bitcoin analysis data:
+
+- **File Browser**: Select from available JSON analysis files
+- **Transaction Timeline**: Interactive chart showing transactions over time
+- **Balance Tracking**: Cumulative balance changes with hover details
+- **Volume Analysis**: Distribution of transaction amounts
+- **Network Graph**: Visual representation of address connections
+- **Statistics Panel**: Key metrics and summary data
 
 ## Troubleshooting
 

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Bitcoin Analysis Visualizer - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i class="fab fa-bitcoin bitcoin-icon"></i>
+                Bitcoin Analysis Visualizer
+            </h1>
+            <p class="lead text-muted">
+                Interactive visualization of Bitcoin address analysis data
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if json_files %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt"></i>
+                    Available Analysis Files ({{ json_files|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for file in json_files %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card file-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="text-center mb-3">
+                                    <i class="fas fa-chart-line fa-3x text-primary"></i>
+                                </div>
+                                <h6 class="card-title text-center">{{ file }}</h6>
+                                <div class="mt-auto">
+                                    <a href="{{ url_for('analyze', filename=file) }}" 
+                                       class="btn btn-primary w-100">
+                                        <i class="fas fa-chart-bar"></i>
+                                        Visualize Analysis
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                <h4 class="text-muted">No Analysis Files Found</h4>
+                <p class="text-muted mb-4">
+                    No JSON analysis files were found in the current directory.<br>
+                    Please run the Bitcoin analysis script first to generate data files.
+                </p>
+                <div class="alert alert-info">
+                    <strong>How to generate analysis files:</strong><br>
+                    1. Run <code>python3 bitcoin_analysis.py</code><br>
+                    2. Enter a Bitcoin address to analyze<br>
+                    3. The analysis will create a JSON file that can be visualized here
+                </div>
+                <button class="btn btn-outline-primary" onclick="refreshFiles()">
+                    <i class="fas fa-sync-alt"></i>
+                    Check for New Files
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Instructions Card -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    How It Works
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-search fa-2x text-primary mb-2"></i>
+                        <h6>1. Analyze</h6>
+                        <p class="text-muted small">
+                            Run the Bitcoin analysis script on any Bitcoin address
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-file-export fa-2x text-success mb-2"></i>
+                        <h6>2. Export</h6>
+                        <p class="text-muted small">
+                            The script automatically exports data to JSON format
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-chart-bar fa-2x text-warning mb-2"></i>
+                        <h6>3. Visualize</h6>
+                        <p class="text-muted small">
+                            View interactive charts and graphs of the analysis
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Card -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-star"></i>
+                    Visualization Features
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-chart-line text-primary me-2"></i>
+                                Transaction Timeline
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-balance-scale text-success me-2"></i>
+                                Balance Over Time
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chart-bar text-info me-2"></i>
+                                Transaction Volume Distribution
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-project-diagram text-warning me-2"></i>
+                                Address Network Graph
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chart-pie text-danger me-2"></i>
+                                Statistical Summary
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-mouse-pointer text-secondary me-2"></i>
+                                Interactive Tooltips
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+Flask==3.0.0
+requests==2.32.4
+rich==14.1.0
+networkx==3.5
+plotly==5.17.0
+Werkzeug==3.0.1
