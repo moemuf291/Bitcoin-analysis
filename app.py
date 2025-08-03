@@ -8,6 +8,7 @@ import plotly.graph_objs as go
 import plotly.utils
 import networkx as nx
 from collections import defaultdict
+from bubble_map_visualizer import BitcoinBubbleMapVisualizer
 
 app = Flask(__name__)
 app.secret_key = 'bitcoin_analysis_secret_key'
@@ -303,6 +304,33 @@ class BitcoinVisualizationApp:
             stats['total_sent_btc'] = total_sent
         
         return stats
+    
+    def create_bubble_map_visualization(self, address):
+        """Create bubble map visualization for a Bitcoin address"""
+        try:
+            visualizer = BitcoinBubbleMapVisualizer()
+            
+            # Analyze transaction flow
+            address_flows = visualizer.analyze_transaction_flow(address, max_transactions=30)
+            
+            if not address_flows:
+                return None, None
+            
+            # Create bubble map data
+            bubble_data = visualizer.create_bubble_map_data(address_flows, address)
+            
+            if not bubble_data:
+                return None, None
+            
+            # Create plots
+            bubble_plot = visualizer.create_bubble_map_plot(bubble_data)
+            network_plot = visualizer.create_flow_network_plot(address_flows, address)
+            
+            return bubble_plot, network_plot
+            
+        except Exception as e:
+            print(f"Error creating bubble map visualization: {e}")
+            return None, None
 
 # Initialize the visualization app
 viz_app = BitcoinVisualizationApp()
@@ -373,5 +401,33 @@ def refresh_files():
     viz_app.json_files = viz_app.get_json_files()
     return jsonify({'files': viz_app.json_files})
 
+@app.route('/bubble_map')
+def bubble_map():
+    """Bubble map visualization page"""
+    return render_template('bubble_map.html')
+
+@app.route('/api/bubble_map/<address>')
+def get_bubble_map(address):
+    """API endpoint to get bubble map data for an address"""
+    try:
+        bubble_plot, network_plot = viz_app.create_bubble_map_visualization(address)
+        
+        if bubble_plot and network_plot:
+            return jsonify({
+                'success': True,
+                'bubble_plot': bubble_plot,
+                'network_plot': network_plot
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create bubble map visualization'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

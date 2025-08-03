@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Bitcoin Transaction Bubble Map{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fab fa-bitcoin bitcoin-icon"></i> Bitcoin Transaction Bubble Map</h3>
+                    <p class="text-muted mb-0">Visualize transaction flows and connections between Bitcoin addresses</p>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="addressInput" class="form-control" 
+                                       placeholder="Enter Bitcoin address (e.g., 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)" 
+                                       value="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">
+                                <button class="btn btn-primary" type="button" onclick="analyzeAddress()">
+                                    <i class="fas fa-chart-bubble"></i> Analyze
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-end">
+                                <button class="btn btn-outline-secondary me-2" onclick="showSampleAddresses()">
+                                    <i class="fas fa-list"></i> Sample Addresses
+                                </button>
+                                <button class="btn btn-outline-info" onclick="showHelp()">
+                                    <i class="fas fa-question-circle"></i> Help
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading indicator -->
+                    <div id="loadingIndicator" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing transaction flow...</p>
+                    </div>
+
+                    <!-- Error message -->
+                    <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="errorText"></span>
+                    </div>
+
+                    <!-- Visualization tabs -->
+                    <div id="visualizationContainer" style="display: none;">
+                        <ul class="nav nav-tabs" id="visualizationTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="bubble-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#bubble-tab-pane" type="button" role="tab">
+                                    <i class="fas fa-circle"></i> Bubble Map
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="network-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#network-tab-pane" type="button" role="tab">
+                                    <i class="fas fa-project-diagram"></i> Network Graph
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="visualizationTabContent">
+                            <div class="tab-pane fade show active" id="bubble-tab-pane" role="tabpanel">
+                                <div class="plot-container">
+                                    <div id="bubblePlot"></div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="network-tab-pane" role="tabpanel">
+                                <div class="plot-container">
+                                    <div id="networkPlot"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis summary -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-info-circle"></i> Analysis Summary</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="analysisSummary">
+                                            <p class="text-muted">Enter a Bitcoin address to see analysis summary...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Addresses Modal -->
+<div class="modal fade" id="sampleAddressesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fab fa-bitcoin bitcoin-icon"></i> Sample Bitcoin Addresses
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Famous Addresses</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Genesis Block</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa')">
+                                    Use
+                                </button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Pizza Transaction</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('17SkEw2md5avvnyEa7WQz4UKa2q3NaLDKy')">
+                                    Use
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>High Activity Addresses</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Exchange Address</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1FzWLkAahHooV3Rzq2yBNSByUVv5m1hZRo')">
+                                    Use
+                                </button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Mining Pool</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2')">
+                                    Use
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle"></i> Bubble Map Help
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>How to use the Bubble Map:</h6>
+                <ol>
+                    <li>Enter a Bitcoin address in the input field</li>
+                    <li>Click "Analyze" to start the visualization</li>
+                    <li>View the bubble map showing transaction flows</li>
+                    <li>Switch to the network graph for a different view</li>
+                </ol>
+                
+                <h6>Understanding the Visualization:</h6>
+                <ul>
+                    <li><strong>Bubble Size:</strong> Represents the number of transactions</li>
+                    <li><strong>Color:</strong> Blue = Main address, Green = Positive net flow, Red = Negative net flow</li>
+                    <li><strong>Position:</strong> X-axis = Net flow (received - sent), Y-axis = Total transaction volume</li>
+                    <li><strong>Connections:</strong> Lines show relationships between addresses</li>
+                </ul>
+                
+                <h6>Tips:</h6>
+                <ul>
+                    <li>Use sample addresses to see examples</li>
+                    <li>Hover over bubbles for detailed information</li>
+                    <li>The analysis may take a few moments for addresses with many transactions</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function analyzeAddress() {
+    const address = document.getElementById('addressInput').value.trim();
+    
+    if (!address) {
+        showError('Please enter a Bitcoin address');
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('visualizationContainer').style.display = 'none';
+    
+    // Make API call
+    fetch(`/api/bubble_map/${address}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            
+            if (data.success) {
+                // Display visualizations
+                Plotly.newPlot('bubblePlot', JSON.parse(data.bubble_plot).data, JSON.parse(data.bubble_plot).layout);
+                Plotly.newPlot('networkPlot', JSON.parse(data.network_plot).data, JSON.parse(data.network_plot).layout);
+                
+                document.getElementById('visualizationContainer').style.display = 'block';
+                
+                // Update analysis summary
+                updateAnalysisSummary(address);
+            } else {
+                showError(data.error || 'Failed to create visualization');
+            }
+        })
+        .catch(error => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            showError('Network error: ' + error.message);
+        });
+}
+
+function showError(message) {
+    document.getElementById('errorText').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+}
+
+function showSampleAddresses() {
+    new bootstrap.Modal(document.getElementById('sampleAddressesModal')).show();
+}
+
+function showHelp() {
+    new bootstrap.Modal(document.getElementById('helpModal')).show();
+}
+
+function useAddress(address) {
+    document.getElementById('addressInput').value = address;
+    bootstrap.Modal.getInstance(document.getElementById('sampleAddressesModal')).hide();
+    analyzeAddress();
+}
+
+function updateAnalysisSummary(address) {
+    const summary = document.getElementById('analysisSummary');
+    summary.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Analyzed Address</h6>
+                <p><code>${address}</code></p>
+                <p class="text-muted">The bubble map shows transaction flows and connections between this address and others involved in its transactions.</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Visualization Features</h6>
+                <ul>
+                    <li>Bubble size indicates transaction count</li>
+                    <li>Color coding shows flow direction</li>
+                    <li>Connections reveal address relationships</li>
+                    <li>Interactive hover details</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// Handle Enter key in input field
+document.getElementById('addressInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        analyzeAddress();
+    }
+});
+
+// Initialize with a sample address
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-analyze the default address
+    setTimeout(() => {
+        analyzeAddress();
+    }, 1000);
+});
+</script>
+{% endblock %}
