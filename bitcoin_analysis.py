@@ -134,13 +134,14 @@ class BitcoinAddressAnalyzer:
             
             # Check inputs
             for vin in tx.get('vin', []):
-                prevout = vin.get('prevout')
-                if prevout and prevout.get('scriptpubkey_address') == address:
-                    amount_out += prevout['value']
+                if vin:
+                    prevout = vin.get('prevout')
+                    if prevout and prevout.get('scriptpubkey_address') == address:
+                        amount_out += prevout['value']
             
             # Check outputs
             for vout in tx.get('vout', []):
-                if vout.get('scriptpubkey_address') == address:
+                if vout and vout.get('scriptpubkey_address') == address:
                     amount_in += vout['value']
             
             net_amount = amount_in - amount_out
@@ -325,12 +326,13 @@ class BitcoinAddressAnalyzer:
                     amount_out = 0
                     
                     for vin in tx.get('vin', []):
-                        prevout = vin.get('prevout')
-                        if prevout and prevout.get('scriptpubkey_address') == address:
-                            amount_out += prevout['value']
+                        if vin:
+                            prevout = vin.get('prevout')
+                            if prevout and prevout.get('scriptpubkey_address') == address:
+                                amount_out += prevout['value']
                     
                     for vout in tx.get('vout', []):
-                        if vout.get('scriptpubkey_address') == address:
+                        if vout and vout.get('scriptpubkey_address') == address:
                             amount_in += vout['value']
                     
                     net_amount_satoshis = amount_in - amount_out
