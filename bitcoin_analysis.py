@@ -134,8 +134,9 @@ class BitcoinAddressAnalyzer:
             
             # Check inputs
             for vin in tx.get('vin', []):
-                if vin.get('prevout', {}).get('scriptpubkey_address') == address:
-                    amount_out += vin['prevout']['value']
+                prevout = vin.get('prevout')
+                if prevout and prevout.get('scriptpubkey_address') == address:
+                    amount_out += prevout['value']
             
             # Check outputs
             for vout in tx.get('vout', []):
@@ -194,8 +195,9 @@ class BitcoinAddressAnalyzer:
             
             # Collect all addresses in inputs
             for vin in tx.get('vin', []):
-                if 'prevout' in vin and 'scriptpubkey_address' in vin['prevout']:
-                    addr = vin['prevout']['scriptpubkey_address']
+                prevout = vin.get('prevout')
+                if prevout and 'scriptpubkey_address' in prevout:
+                    addr = prevout['scriptpubkey_address']
                     tx_addresses.add(addr)
             
             # Collect all addresses in outputs
@@ -323,8 +325,9 @@ class BitcoinAddressAnalyzer:
                     amount_out = 0
                     
                     for vin in tx.get('vin', []):
-                        if vin.get('prevout', {}).get('scriptpubkey_address') == address:
-                            amount_out += vin['prevout']['value']
+                        prevout = vin.get('prevout')
+                        if prevout and prevout.get('scriptpubkey_address') == address:
+                            amount_out += prevout['value']
                     
                     for vout in tx.get('vout', []):
                         if vout.get('scriptpubkey_address') == address:
