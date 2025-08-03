@@ -41,9 +41,19 @@ class BitcoinVisualizationApp:
         tx_types = []
         
         for tx in timeline_data:
-            dates.append(datetime.fromisoformat(tx['date']))
-            amounts.append(tx['net_amount_btc'])
-            tx_types.append(tx['transaction_type'])
+            # Handle different date field names and formats
+            date_str = tx.get('date') or tx.get('formatted_date') or tx.get('timestamp')
+            if date_str:
+                try:
+                    if isinstance(date_str, (int, float)):
+                        dates.append(datetime.fromtimestamp(date_str))
+                    else:
+                        dates.append(datetime.fromisoformat(date_str.replace('Z', '+00:00')))
+                except (ValueError, TypeError):
+                    continue
+            
+            amounts.append(tx.get('net_amount_btc', 0))
+            tx_types.append(tx.get('transaction_type', 'Unknown'))
         
         # Create color mapping
         colors = ['green' if t == 'Received' else 'red' for t in tx_types]
@@ -81,17 +91,33 @@ class BitcoinVisualizationApp:
         if 'transaction_timeline' not in data:
             return None
         
-        timeline_data = sorted(data['transaction_timeline'], 
-                             key=lambda x: datetime.fromisoformat(x['date']))
+        timeline_data = data['transaction_timeline']
+        
+        # Sort by date with robust date handling
+        def get_date(tx):
+            date_str = tx.get('date') or tx.get('formatted_date') or tx.get('timestamp')
+            if date_str:
+                try:
+                    if isinstance(date_str, (int, float)):
+                        return datetime.fromtimestamp(date_str)
+                    else:
+                        return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                except (ValueError, TypeError):
+                    return datetime.min
+            return datetime.min
+        
+        timeline_data = sorted(timeline_data, key=get_date)
         
         dates = []
         cumulative_balance = 0
         balances = []
         
         for tx in timeline_data:
-            dates.append(datetime.fromisoformat(tx['date']))
-            cumulative_balance += tx['net_amount_btc']
-            balances.append(cumulative_balance)
+            date_obj = get_date(tx)
+            if date_obj != datetime.min:
+                dates.append(date_obj)
+                cumulative_balance += tx.get('net_amount_btc', 0)
+                balances.append(cumulative_balance)
         
         fig = go.Figure()
         
@@ -299,12 +325,38 @@ def analyze(filename):
         flash('Error loading JSON data!', 'error')
         return redirect(url_for('index'))
     
-    # Create all visualizations
-    timeline_plot = viz_app.create_transaction_timeline_plot(data)
-    balance_plot = viz_app.create_balance_over_time_plot(data)
-    volume_plot = viz_app.create_transaction_volume_plot(data)
-    network_plot = viz_app.create_network_graph(data)
-    statistics = viz_app.create_statistics_summary(data)
+    # Create all visualizations with error handling
+    timeline_plot = None
+    balance_plot = None
+    volume_plot = None
+    network_plot = None
+    statistics = None
+    
+    try:
+        timeline_plot = viz_app.create_transaction_timeline_plot(data)
+    except Exception as e:
+        print(f"Error creating timeline plot: {e}")
+        
+    try:
+        balance_plot = viz_app.create_balance_over_time_plot(data)
+    except Exception as e:
+        print(f"Error creating balance plot: {e}")
+        
+    try:
+        volume_plot = viz_app.create_transaction_volume_plot(data)
+    except Exception as e:
+        print(f"Error creating volume plot: {e}")
+        
+    try:
+        network_plot = viz_app.create_network_graph(data)
+    except Exception as e:
+        print(f"Error creating network plot: {e}")
+        
+    try:
+        statistics = viz_app.create_statistics_summary(data)
+    except Exception as e:
+        print(f"Error creating statistics: {e}")
+        statistics = {}
     
     return render_template('analysis.html', 
                          filename=filename,
