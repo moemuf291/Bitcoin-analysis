@@ -1,5 +1,8 @@
 # Bitcoin Address Analyzer
 
+![Bitcoin Analysis Screenshot](https://raw.githubusercontent.com/moemuf291/Bitcoin-analysis/refs/heads/main/images/Screenshot%20(6).png)
+
+
 A comprehensive Bitcoin address analysis tool that exports all data to structured JSON files and provides interactive web visualizations.
 
 ## Features
@@ -167,6 +170,15 @@ The structured JSON output can be used for:
 - **Report Generation**: Create custom reports and dashboards
 
 ## Screenshots
+![Bitcoin Analysis Screenshot 5](https://raw.githubusercontent.com/moemuf291/Bitcoin-analysis/refs/heads/main/images/Screenshot%20(7).png)
+
+
+![Bitcoin Analysis Screenshot 2](https://raw.githubusercontent.com/moemuf291/Bitcoin-analysis/refs/heads/main/images/Screenshot%20(2).png)
+
+![Bitcoin Analysis Screenshot 3](https://raw.githubusercontent.com/moemuf291/Bitcoin-analysis/refs/heads/main/images/Screenshot%20(3).png)
+
+![Bitcoin Analysis Screenshot 4](https://raw.githubusercontent.com/moemuf291/Bitcoin-analysis/refs/heads/main/images/Screenshot%20(5).png)
+
 
 ### Web Dashboard
 The interactive web interface provides an intuitive way to browse and visualize Bitcoin analysis data:
@@ -190,3 +202,10 @@ If the app is not generating JSON files:
 ## API Rate Limits
 
 The app uses the free Blockstream API which may have rate limits. If you encounter errors, try waiting a few moments between requests.
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
+
+
+
