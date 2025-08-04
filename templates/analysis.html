@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Bitcoin Analysis - {{ address }}{% endblock %}
+
+{% block content %}
+<style>
+    .plot-container {
+        min-height: 500px !important;
+        height: 60vh !important;
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+    }
+    
+    /* Fullscreen styles */
+    .fullscreen-active {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999 !important;
+        background: #ffffff !important;
+        border-radius: 0 !important;
+        padding: 20px !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    .fullscreen-active .plot-container {
+        height: calc(100vh - 40px) !important;
+        min-height: calc(100vh - 40px) !important;
+        border-radius: 0 !important;
+        padding: 20px !important;
+    }
+    
+    .fullscreen-active #timeline-plot,
+    .fullscreen-active #balance-plot,
+    .fullscreen-active #volume-plot,
+    .fullscreen-active #network-plot {
+        height: 100% !important;
+        min-height: 100% !important;
+    }
+    
+    .fullscreen-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9998;
+        display: none;
+    }
+    
+    .fullscreen-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: none;
+    }
+</style>
+
+<!-- Fullscreen overlay -->
+<div class="fullscreen-overlay" id="fullscreenOverlay"></div>
+<button type="button" class="btn btn-outline-secondary fullscreen-btn" id="exitFullscreenBtn" title="Exit Fullscreen">
+    <i class="fas fa-compress"></i> Exit Fullscreen
+</button>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fab fa-bitcoin bitcoin-icon"></i>
+                    Bitcoin Address Analysis
+                </h1>
+                <p class="text-muted mb-0">
+                    <strong>Address:</strong> {{ address }}<br>
+                    <strong>File:</strong> {{ filename }}
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Files
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Summary -->
+{% if statistics %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i>
+                    Address Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for key, value in statistics.items() %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-value">
+                                {% if 'btc' in key|lower %}
+                                    {{ "%.8f"|format(value) }}
+                                {% elif 'balance' in key|lower %}
+                                    {{ "%.8f"|format(value) }} BTC
+                                {% else %}
+                                    {{ value|int if value is number else value }}
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">
+                                {{ key.replace('_', ' ').title() }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transaction Timeline -->
+{% if timeline_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i>
+                    Transaction Timeline
+                </h5>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="enterFullscreen('timeline-plot', 'timelineContainer')" title="Fullscreen">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="timeline-plot" class="plot-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Balance Over Time -->
+{% if balance_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-balance-scale"></i>
+                    Cumulative Balance Over Time
+                </h5>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="enterFullscreen('balance-plot', 'balanceContainer')" title="Fullscreen">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="balance-plot" class="plot-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transaction Volume Distribution -->
+{% if volume_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i>
+                    Transaction Volume Distribution
+                </h5>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="enterFullscreen('volume-plot', 'volumeContainer')" title="Fullscreen">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="volume-plot" class="plot-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Top Addresses Analysis -->
+{% if top_addresses %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-trophy"></i>
+                    Top Addresses Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Address Flow Analysis:</strong> Shows which Bitcoin addresses sent or received the most funds in transactions involving the analyzed address.
+                </div>
+                
+                <div class="row">
+                    <!-- Top Senders -->
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-arrow-up"></i>
+                                    Top Senders (Most Funds Sent)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if top_addresses and top_addresses.top_senders %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Rank</th>
+                                                    <th>Address</th>
+                                                    <th>Amount Sent (BTC)</th>
+                                                    <th>Transactions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for sender_data in top_addresses.top_senders %}
+                                                {% set address = sender_data[0] %}
+                                                {% set data = sender_data[1] %}
+                                                {% set rank = loop.index %}
+                                                <tr>
+                                                    <td>
+                                                        {% if rank == 1 %}
+                                                            <span class="badge bg-warning">🥇</span>
+                                                        {% elif rank == 2 %}
+                                                            <span class="badge bg-secondary">🥈</span>
+                                                        {% elif rank == 3 %}
+                                                            <span class="badge bg-warning">🥉</span>
+                                                        {% else %}
+                                                            <span class="badge bg-light text-dark">{{ rank }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <code class="small">{{ address[:12] }}...{{ address[-8:] }}</code>
+                                                        <button class="btn btn-sm btn-outline-primary ms-2" 
+                                                                onclick="copyToClipboard('{{ address }}')" 
+                                                                title="Copy address">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </td>
+                                                    <td class="text-danger fw-bold">{{ "%.8f"|format(data.total_sent) }}</td>
+                                                    <td>{{ data.transaction_count }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No sender data available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Receivers -->
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-arrow-down"></i>
+                                    Top Receivers (Most Funds Received)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if top_addresses and top_addresses.top_receivers %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Rank</th>
+                                                    <th>Address</th>
+                                                    <th>Amount Received (BTC)</th>
+                                                    <th>Transactions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for receiver_data in top_addresses.top_receivers %}
+                                                {% set address = receiver_data[0] %}
+                                                {% set data = receiver_data[1] %}
+                                                {% set rank = loop.index %}
+                                                <tr>
+                                                    <td>
+                                                        {% if rank == 1 %}
+                                                            <span class="badge bg-warning">🥇</span>
+                                                        {% elif rank == 2 %}
+                                                            <span class="badge bg-secondary">🥈</span>
+                                                        {% elif rank == 3 %}
+                                                            <span class="badge bg-warning">🥉</span>
+                                                        {% else %}
+                                                            <span class="badge bg-light text-dark">{{ rank }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <code class="small">{{ address[:12] }}...{{ address[-8:] }}</code>
+                                                        <button class="btn btn-sm btn-outline-success ms-2" 
+                                                                onclick="copyToClipboard('{{ address }}')" 
+                                                                title="Copy address">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </td>
+                                                    <td class="text-success fw-bold">{{ "%.8f"|format(data.total_received) }}</td>
+                                                    <td>{{ data.transaction_count }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No receiver data available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-chart-bar"></i>
+                            <strong>Analysis Summary:</strong> 
+                            {% if top_addresses %}
+                                Analyzed {{ top_addresses.total_addresses_analyzed }} unique addresses across all transactions.
+                            {% else %}
+                                No address flow analysis available.
+                            {% endif %}
+                            This shows the flow of funds between the analyzed address and other Bitcoin addresses.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Network Graph -->
+{% if network_plot %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-project-diagram"></i>
+                    Address Network Visualization
+                </h5>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="enterFullscreen('network-plot', 'networkContainer')" title="Fullscreen">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Network Graph:</strong> This shows the connections between Bitcoin addresses. 
+                    Hover over nodes to see details. Zoom and pan to explore the network.
+                </div>
+                <div id="network-plot" class="plot-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- No Data Message -->
+{% if not timeline_plot and not balance_plot and not volume_plot and not network_plot %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
+                <h4 class="text-muted">No Visualization Data Available</h4>
+                <p class="text-muted">
+                    The JSON file doesn't contain sufficient data for visualization.<br>
+                    Please ensure the analysis was completed successfully.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Plot configurations
+    const plotConfig = {
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+        responsive: true
+    };
+
+    // Render Timeline Plot
+    {% if timeline_plot %}
+    const timelineData = {{ timeline_plot|safe }};
+    Plotly.newPlot('timeline-plot', timelineData.data, timelineData.layout, plotConfig);
+    {% endif %}
+
+    // Render Balance Plot
+    {% if balance_plot %}
+    const balanceData = {{ balance_plot|safe }};
+    Plotly.newPlot('balance-plot', balanceData.data, balanceData.layout, plotConfig);
+    {% endif %}
+
+    // Render Volume Plot
+    {% if volume_plot %}
+    const volumeData = {{ volume_plot|safe }};
+    Plotly.newPlot('volume-plot', volumeData.data, volumeData.layout, plotConfig);
+    {% endif %}
+
+    // Render Network Plot
+    {% if network_plot %}
+    const networkData = {{ network_plot|safe }};
+    Plotly.newPlot('network-plot', networkData.data, networkData.layout, plotConfig);
+    
+    // Add click handler for network plot to copy addresses
+    document.getElementById('network-plot').on('plotly_click', function(data) {
+        const point = data.points[0];
+        if (point && point.customdata) {
+            const address = point.customdata;
+            copyToClipboard(address);
+            
+            // Show a temporary success message
+            const plotDiv = document.getElementById('network-plot');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: #28a745;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 1000;
+                pointer-events: none;
+            `;
+            notification.textContent = 'Address copied!';
+            plotDiv.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+        }
+    });
+    {% endif %}
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        {% if timeline_plot %}
+        Plotly.Plots.resize('timeline-plot');
+        {% endif %}
+        {% if balance_plot %}
+        Plotly.Plots.resize('balance-plot');
+        {% endif %}
+        {% if volume_plot %}
+        Plotly.Plots.resize('volume-plot');
+        {% endif %}
+        {% if network_plot %}
+        Plotly.Plots.resize('network-plot');
+        {% endif %}
+    });
+
+    // Auto-resize plots after page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            {% if timeline_plot %}
+            Plotly.Plots.resize('timeline-plot');
+            {% endif %}
+            {% if balance_plot %}
+            Plotly.Plots.resize('balance-plot');
+            {% endif %}
+            {% if volume_plot %}
+            Plotly.Plots.resize('volume-plot');
+            {% endif %}
+            {% if network_plot %}
+            Plotly.Plots.resize('network-plot');
+            {% endif %}
+        }, 100);
+    });
+    
+    // Function to copy address to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Show a temporary success message
+            const button = event.target.closest('button');
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i>';
+            button.classList.remove('btn-outline-primary', 'btn-outline-success');
+            button.classList.add('btn-success');
+            
+            setTimeout(function() {
+                button.innerHTML = originalHTML;
+                button.classList.remove('btn-success');
+                if (originalHTML.includes('btn-outline-primary')) {
+                    button.classList.add('btn-outline-primary');
+                } else {
+                    button.classList.add('btn-outline-success');
+                }
+            }, 1000);
+        }).catch(function(err) {
+            console.error('Could not copy text: ', err);
+            alert('Failed to copy address to clipboard');
+        });
+    }
+    
+    // Fullscreen functionality
+    let isFullscreen = false;
+    let currentFullscreenPlot = null;
+    
+    function enterFullscreen(plotId, containerId) {
+        if (isFullscreen) return;
+        
+        const plotElement = document.getElementById(plotId);
+        if (!plotElement) return;
+        
+        // Store current plot data
+        const plotData = {
+            data: plotElement.data,
+            layout: plotElement.layout
+        };
+        
+        // Create fullscreen container
+        const fullscreenContainer = document.createElement('div');
+        fullscreenContainer.id = 'fullscreenContainer';
+        fullscreenContainer.className = 'fullscreen-active';
+        
+        // Create plot container
+        const plotContainer = document.createElement('div');
+        plotContainer.className = 'plot-container';
+        plotContainer.style.cssText = 'height: calc(100vh - 40px) !important; min-height: calc(100vh - 40px) !important; border-radius: 0 !important; padding: 20px !important;';
+        
+        // Create plot div with unique ID
+        const fullscreenPlotId = 'fullscreen-' + plotId;
+        const plotDiv = document.createElement('div');
+        plotDiv.id = fullscreenPlotId;
+        plotDiv.style.cssText = 'width: 100% !important; height: 100% !important; min-height: 100% !important; border-radius: 8px;';
+        
+        plotContainer.appendChild(plotDiv);
+        fullscreenContainer.appendChild(plotContainer);
+        
+        // Add exit button to fullscreen container
+        const exitBtn = document.createElement('button');
+        exitBtn.type = 'button';
+        exitBtn.className = 'btn btn-outline-secondary';
+        exitBtn.style.cssText = 'position: absolute; top: 20px; right: 20px; z-index: 10001;';
+        exitBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+        exitBtn.onclick = exitFullscreen;
+        fullscreenContainer.appendChild(exitBtn);
+        
+        document.body.appendChild(fullscreenContainer);
+        
+        // Show overlay and exit button
+        document.getElementById('fullscreenOverlay').style.display = 'block';
+        document.getElementById('exitFullscreenBtn').style.display = 'block';
+        
+        isFullscreen = true;
+        currentFullscreenPlot = fullscreenPlotId;
+        
+        // Recreate the plot in fullscreen with enhanced config
+        setTimeout(() => {
+            const fullscreenConfig = {
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+                responsive: true,
+                scrollZoom: true,
+                doubleClick: 'reset',
+                showTips: true,
+                showLink: false
+            };
+            
+            Plotly.newPlot(fullscreenPlotId, plotData.data, plotData.layout, fullscreenConfig);
+            
+            // Add click handler for network plot to copy addresses
+            if (plotId === 'network-plot') {
+                document.getElementById(fullscreenPlotId).on('plotly_click', function(data) {
+                    const point = data.points[0];
+                    if (point && point.customdata) {
+                        const address = point.customdata;
+                        copyToClipboard(address);
+                        
+                        // Show notification
+                        const plotDiv = document.getElementById(fullscreenPlotId);
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: absolute;
+                            top: 10px;
+                            right: 10px;
+                            background: #28a745;
+                            color: white;
+                            padding: 8px 12px;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            z-index: 1000;
+                            pointer-events: none;
+                        `;
+                        notification.textContent = 'Address copied!';
+                        plotDiv.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 2000);
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    function exitFullscreen() {
+        // Remove fullscreen container
+        const fullscreenContainer = document.getElementById('fullscreenContainer');
+        if (fullscreenContainer) {
+            fullscreenContainer.remove();
+        }
+        
+        // Hide overlay and exit button
+        document.getElementById('fullscreenOverlay').style.display = 'none';
+        document.getElementById('exitFullscreenBtn').style.display = 'none';
+        
+        isFullscreen = false;
+        currentFullscreenPlot = null;
+    }
+    
+    // Handle ESC key to exit fullscreen
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            exitFullscreen();
+        }
+    });
+    
+    // Exit fullscreen button handler
+    document.getElementById('exitFullscreenBtn').addEventListener('click', exitFullscreen);
+</script>
+{% endblock %}

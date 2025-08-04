@@ -1,0 +1,746 @@
+{% extends "base.html" %}
+
+{% block title %}Bitcoin Transaction Bubble Map{% endblock %}
+
+{% block content %}
+<style>
+    .plot-container {
+        min-height: 700px !important;
+        height: 85vh !important;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+    }
+    #bubblePlot, #networkPlot {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 700px !important;
+        border-radius: 8px;
+    }
+    .tab-content {
+        height: 85vh;
+    }
+    .tab-pane {
+        height: 100%;
+    }
+    .nav-tabs {
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .nav-tabs .nav-link {
+        background: #f9fafb;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+        border-bottom: none;
+        margin-right: 0;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.2s ease;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link:hover {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #d1d5db;
+    }
+    .nav-tabs .nav-link.active {
+        background: #ffffff;
+        color: #1f2937;
+        border-color: #e5e7eb;
+        border-bottom-color: #ffffff;
+        font-weight: 600;
+    }
+    .card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        border-radius: 12px;
+    }
+    .card-header {
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        color: #1f2937;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+    }
+    .btn-primary {
+        background: #3b82f6;
+        border: none;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        transition: all 0.2s ease;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+    }
+    .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .form-control {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        color: #1f2937;
+        font-family: 'Inter', sans-serif;
+    }
+    .form-control:focus {
+        background: #ffffff;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        color: #1f2937;
+    }
+    .form-control::placeholder {
+        color: #9ca3af;
+    }
+    .input-group-text {
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        font-family: 'Inter', sans-serif;
+    }
+    body {
+        font-family: 'Inter', sans-serif;
+        color: #1f2937;
+    }
+    .alert-info {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e40af;
+    }
+    
+    /* Fullscreen styles */
+    .fullscreen-active {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999 !important;
+        background: #ffffff !important;
+        border-radius: 0 !important;
+        padding: 20px !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    .fullscreen-active .plot-container {
+        height: calc(100vh - 40px) !important;
+        min-height: calc(100vh - 40px) !important;
+        border-radius: 0 !important;
+        padding: 20px !important;
+    }
+    
+    .fullscreen-active #bubblePlot,
+    .fullscreen-active #networkPlot {
+        height: 100% !important;
+        min-height: 100% !important;
+    }
+    
+    .fullscreen-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9998;
+        display: none;
+    }
+    
+    .fullscreen-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: none;
+    }
+</style>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                    <h3><i class="fab fa-bitcoin bitcoin-icon"></i> Bitcoin Transaction Bubble Map</h3>
+                    <p class="text-muted mb-0">Visualize transaction flows and connections between Bitcoin addresses</p>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="fullscreenBtn" title="Toggle Fullscreen">
+                                <i class="fas fa-expand"></i> Fullscreen
+                            </button>
+                        </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="addressInput" class="form-control" 
+                                       placeholder="Enter Bitcoin address (e.g., 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)" 
+                                       value="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">
+                                <button class="btn btn-primary" type="button" onclick="analyzeAddress()">
+                                    <i class="fas fa-chart-bubble"></i> Analyze
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex justify-content-end">
+                                <button class="btn btn-outline-secondary me-2" onclick="showSampleAddresses()">
+                                    <i class="fas fa-list"></i> Sample Addresses
+                                </button>
+                                <button class="btn btn-outline-info" onclick="showHelp()">
+                                    <i class="fas fa-question-circle"></i> Help
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading indicator -->
+                    <div id="loadingIndicator" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Analyzing transaction flow...</p>
+                    </div>
+
+                    <!-- Error message -->
+                    <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="errorText"></span>
+                    </div>
+
+                    <!-- Visualization tabs -->
+                    <div id="visualizationContainer" style="display: none;">
+                        <ul class="nav nav-tabs" id="visualizationTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="bubble-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#bubble-tab-pane" type="button" role="tab">
+                                    <i class="fas fa-circle"></i> Bubble Map
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="network-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#network-tab-pane" type="button" role="tab">
+                                    <i class="fas fa-project-diagram"></i> Network Graph
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="visualizationTabContent">
+                            <div class="tab-pane fade show active" id="bubble-tab-pane" role="tabpanel">
+                                <div class="plot-container" id="bubbleContainer">
+                                    <div id="bubblePlot"></div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="network-tab-pane" role="tabpanel">
+                                <div class="plot-container" id="networkContainer">
+                                    <div id="networkPlot"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis summary -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-info-circle"></i> Analysis Summary</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="analysisSummary">
+                                            <p class="text-muted">Enter a Bitcoin address to see analysis summary...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fullscreen overlay -->
+<div class="fullscreen-overlay" id="fullscreenOverlay"></div>
+<button type="button" class="btn btn-outline-secondary fullscreen-btn" id="exitFullscreenBtn" title="Exit Fullscreen">
+    <i class="fas fa-compress"></i> Exit Fullscreen
+</button>
+
+<!-- Sample Addresses Modal -->
+<div class="modal fade" id="sampleAddressesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fab fa-bitcoin bitcoin-icon"></i> Sample Bitcoin Addresses
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Famous Addresses</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Genesis Block</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa')">
+                                    Use
+                                </button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Pizza Transaction</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('17SkEw2md5avvnyEa7WQz4UKa2q3NaLDKy')">
+                                    Use
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>High Activity Addresses</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Exchange Address</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1FzWLkAahHooV3Rzq2yBNSByUVv5m1hZRo')">
+                                    Use
+                                </button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Mining Pool</span>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="useAddress('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2')">
+                                    Use
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle"></i> Bubble Map Help
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>How to use the Bubble Map:</h6>
+                <ol>
+                    <li>Enter a Bitcoin address in the input field</li>
+                    <li>Click "Analyze" to start the visualization</li>
+                    <li>View the bubble map showing transaction flows</li>
+                    <li>Switch to the network graph for a different view</li>
+                </ol>
+                
+                <h6>Understanding the Visualization:</h6>
+                <ul>
+                    <li><strong>Bubble Size:</strong> Represents the number of transactions</li>
+                    <li><strong>Color:</strong> Blue = Main address, Green = Positive net flow, Red = Negative net flow</li>
+                    <li><strong>Position:</strong> X-axis = Net flow (received - sent), Y-axis = Total transaction volume</li>
+                    <li><strong>Connections:</strong> Lines show relationships between addresses</li>
+                </ul>
+                
+                <h6>Tips:</h6>
+                <ul>
+                    <li>Use sample addresses to see examples</li>
+                    <li>Hover over bubbles for detailed information</li>
+                    <li>The analysis may take a few moments for addresses with many transactions</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function analyzeAddress() {
+    const address = document.getElementById('addressInput').value.trim();
+    
+    if (!address) {
+        showError('Please enter a Bitcoin address');
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('visualizationContainer').style.display = 'none';
+    
+    // Make API call
+    fetch(`/api/bubble_map/${address}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            
+            if (data.success) {
+                // Display visualizations with enhanced config
+                const bubbleConfig = {
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+                    responsive: true,
+                    scrollZoom: true,
+                    doubleClick: 'reset',
+                    showTips: true,
+                    showLink: false
+                };
+                
+                // Store plot data globally for fullscreen access
+                window.bubblePlotData = JSON.parse(data.bubble_plot);
+                window.networkPlotData = JSON.parse(data.network_plot);
+                
+                Plotly.newPlot('bubblePlot', window.bubblePlotData.data, window.bubblePlotData.layout, bubbleConfig);
+                Plotly.newPlot('networkPlot', window.networkPlotData.data, window.networkPlotData.layout, bubbleConfig);
+                
+                // Add click handlers for copying addresses
+                document.getElementById('bubblePlot').on('plotly_click', function(data) {
+                    const point = data.points[0];
+                    if (point && point.customdata) {
+                        const address = point.customdata;
+                        copyToClipboard(address);
+                        
+                        // Show notification
+                        const plotDiv = document.getElementById('bubblePlot');
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: absolute;
+                            top: 10px;
+                            right: 10px;
+                            background: #28a745;
+                            color: white;
+                            padding: 8px 12px;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            z-index: 1000;
+                            pointer-events: none;
+                        `;
+                        notification.textContent = 'Address copied!';
+                        plotDiv.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 2000);
+                    }
+                });
+                
+                document.getElementById('networkPlot').on('plotly_click', function(data) {
+                    const point = data.points[0];
+                    if (point && point.customdata) {
+                        const address = point.customdata;
+                        copyToClipboard(address);
+                        
+                        // Show notification
+                        const plotDiv = document.getElementById('networkPlot');
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: absolute;
+                            top: 10px;
+                            right: 10px;
+                            background: #28a745;
+                            color: white;
+                            padding: 8px 12px;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            z-index: 1000;
+                            pointer-events: none;
+                        `;
+                        notification.textContent = 'Address copied!';
+                        plotDiv.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 2000);
+                    }
+                });
+                
+                document.getElementById('visualizationContainer').style.display = 'block';
+                
+                // Update analysis summary
+                updateAnalysisSummary(address);
+            } else {
+                showError(data.error || 'Failed to create visualization');
+            }
+        })
+        .catch(error => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            showError('Network error: ' + error.message);
+        });
+}
+
+function showError(message) {
+    document.getElementById('errorText').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+}
+
+function showSampleAddresses() {
+    new bootstrap.Modal(document.getElementById('sampleAddressesModal')).show();
+}
+
+function showHelp() {
+    new bootstrap.Modal(document.getElementById('helpModal')).show();
+}
+
+function useAddress(address) {
+    document.getElementById('addressInput').value = address;
+    bootstrap.Modal.getInstance(document.getElementById('sampleAddressesModal')).hide();
+    analyzeAddress();
+}
+
+function updateAnalysisSummary(address) {
+    const summary = document.getElementById('analysisSummary');
+    summary.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Analyzed Address</h6>
+                <p><code>${address}</code></p>
+                <p class="text-muted">The bubble map shows transaction flows and connections between this address and others involved in its transactions.</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Visualization Features</h6>
+                <ul>
+                    <li>Bubble size indicates transaction count</li>
+                    <li>Color coding shows flow direction</li>
+                    <li>Connections reveal address relationships</li>
+                    <li>Interactive hover details</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// Handle Enter key in input field
+document.getElementById('addressInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        analyzeAddress();
+    }
+});
+
+// Initialize with a sample address
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-analyze the default address
+    setTimeout(() => {
+        analyzeAddress();
+    }, 1000);
+    
+    // Initialize fullscreen functionality
+    initializeFullscreen();
+});
+
+// Fullscreen functionality
+function initializeFullscreen() {
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
+    const fullscreenOverlay = document.getElementById('fullscreenOverlay');
+    const visualizationContainer = document.getElementById('visualizationContainer');
+    const bubbleContainer = document.getElementById('bubbleContainer');
+    const networkContainer = document.getElementById('networkContainer');
+    
+    let isFullscreen = false;
+    let currentActiveContainer = null;
+    
+    fullscreenBtn.addEventListener('click', function() {
+        if (!isFullscreen) {
+            enterFullscreen();
+        } else {
+            exitFullscreen();
+        }
+    });
+    
+    exitFullscreenBtn.addEventListener('click', function() {
+        exitFullscreen();
+    });
+    
+    // Handle ESC key to exit fullscreen
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isFullscreen) {
+            exitFullscreen();
+        }
+    });
+    
+    function enterFullscreen() {
+        // Determine which tab is active
+        const activeTab = document.querySelector('.nav-tabs .nav-link.active');
+        if (activeTab.id === 'bubble-tab') {
+            currentActiveContainer = bubbleContainer;
+        } else {
+            currentActiveContainer = networkContainer;
+        }
+        
+        if (currentActiveContainer) {
+            // Hide the main container
+            visualizationContainer.style.display = 'none';
+            
+            // Show overlay
+            fullscreenOverlay.style.display = 'block';
+            
+            // Create fullscreen container
+            const fullscreenContainer = document.createElement('div');
+            fullscreenContainer.id = 'fullscreenContainer';
+            fullscreenContainer.className = 'fullscreen-active';
+            
+            // Create plot container
+            const plotContainer = document.createElement('div');
+            plotContainer.className = 'plot-container';
+            plotContainer.style.cssText = 'height: calc(100vh - 40px) !important; min-height: calc(100vh - 40px) !important; border-radius: 0 !important; padding: 20px !important;';
+            
+            // Create plot div with unique ID
+            const plotId = activeTab.id === 'bubble-tab' ? 'fullscreenBubblePlot' : 'fullscreenNetworkPlot';
+            const plotDiv = document.createElement('div');
+            plotDiv.id = plotId;
+            plotDiv.style.cssText = 'width: 100% !important; height: 100% !important; min-height: 100% !important; border-radius: 8px;';
+            
+            plotContainer.appendChild(plotDiv);
+            fullscreenContainer.appendChild(plotContainer);
+            
+            // Add exit button to fullscreen container
+            const exitBtn = document.createElement('button');
+            exitBtn.type = 'button';
+            exitBtn.className = 'btn btn-outline-secondary';
+            exitBtn.style.cssText = 'position: absolute; top: 20px; right: 20px; z-index: 10001;';
+            exitBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+            exitBtn.onclick = exitFullscreen;
+            fullscreenContainer.appendChild(exitBtn);
+            
+            document.body.appendChild(fullscreenContainer);
+            
+            // Show exit button
+            exitFullscreenBtn.style.display = 'block';
+            
+            isFullscreen = true;
+            
+            // Update button text
+            fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+            
+            // Recreate the plot in fullscreen with enhanced config
+            setTimeout(() => {
+                const bubbleConfig = {
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+                    responsive: true,
+                    scrollZoom: true,
+                    doubleClick: 'reset',
+                    showTips: true,
+                    showLink: false
+                };
+                
+                if (activeTab.id === 'bubble-tab') {
+                    // Use stored bubble plot data
+                    if (window.bubblePlotData) {
+                        Plotly.newPlot(plotId, window.bubblePlotData.data, window.bubblePlotData.layout, bubbleConfig);
+                        
+                        // Add click handler for copying addresses
+                        document.getElementById(plotId).on('plotly_click', function(data) {
+                            const point = data.points[0];
+                            if (point && point.customdata) {
+                                const address = point.customdata;
+                                copyToClipboard(address);
+                                
+                                // Show notification
+                                const plotDiv = document.getElementById(plotId);
+                                const notification = document.createElement('div');
+                                notification.style.cssText = `
+                                    position: absolute;
+                                    top: 10px;
+                                    right: 10px;
+                                    background: #28a745;
+                                    color: white;
+                                    padding: 8px 12px;
+                                    border-radius: 4px;
+                                    font-size: 12px;
+                                    z-index: 1000;
+                                    pointer-events: none;
+                                `;
+                                notification.textContent = 'Address copied!';
+                                plotDiv.appendChild(notification);
+                                
+                                setTimeout(() => {
+                                    notification.remove();
+                                }, 2000);
+                            }
+                        });
+                    }
+                } else {
+                    // Use stored network plot data
+                    if (window.networkPlotData) {
+                        Plotly.newPlot(plotId, window.networkPlotData.data, window.networkPlotData.layout, bubbleConfig);
+                        
+                        // Add click handler for copying addresses
+                        document.getElementById(plotId).on('plotly_click', function(data) {
+                            const point = data.points[0];
+                            if (point && point.customdata) {
+                                const address = point.customdata;
+                                copyToClipboard(address);
+                                
+                                // Show notification
+                                const plotDiv = document.getElementById(plotId);
+                                const notification = document.createElement('div');
+                                notification.style.cssText = `
+                                    position: absolute;
+                                    top: 10px;
+                                    right: 10px;
+                                    background: #28a745;
+                                    color: white;
+                                    padding: 8px 12px;
+                                    border-radius: 4px;
+                                    font-size: 12px;
+                                    z-index: 1000;
+                                    pointer-events: none;
+                                `;
+                                notification.textContent = 'Address copied!';
+                                plotDiv.appendChild(notification);
+                                
+                                setTimeout(() => {
+                                    notification.remove();
+                                }, 2000);
+                            }
+                        });
+                    }
+                }
+            }, 100);
+        }
+    }
+    
+    function exitFullscreen() {
+        // Remove fullscreen container
+        const fullscreenContainer = document.getElementById('fullscreenContainer');
+        if (fullscreenContainer) {
+            fullscreenContainer.remove();
+        }
+        
+        // Hide overlay and exit button
+        fullscreenOverlay.style.display = 'none';
+        exitFullscreenBtn.style.display = 'none';
+        
+        // Show main container
+        visualizationContainer.style.display = 'block';
+        
+        isFullscreen = false;
+        
+        // Update button text
+        fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+        
+        // Trigger resize event for Plotly
+        setTimeout(() => {
+            const activeTab = document.querySelector('.nav-tabs .nav-link.active');
+            if (activeTab.id === 'bubble-tab') {
+                Plotly.Plots.resize('bubblePlot');
+            } else {
+                Plotly.Plots.resize('networkPlot');
+            }
+        }, 100);
+    }
+}
+</script>
+{% endblock %}
